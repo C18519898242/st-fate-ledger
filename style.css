@@ -1,0 +1,271 @@
+#st-fate-ledger-trigger {
+    order: 1;
+}
+
+dialog.popup.st-fate-ledger-popup {
+    width: min(var(--st-fate-ledger-width), calc(100dvw - 2rem));
+    max-width: none;
+    height: min(var(--st-fate-ledger-height), calc(100dvh - 2rem));
+    max-height: none;
+}
+
+.st-fate-ledger {
+    padding: 0.25rem 0.5rem;
+    color: var(--SmartThemeBodyColor, inherit);
+}
+
+.st-fate-ledger h2 {
+    margin: 0;
+}
+
+.stfl-menu {
+    position: fixed;
+    z-index: 10000;
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    min-width: 10rem;
+    padding: 0.35rem;
+    border: 1px solid var(--SmartThemeBorderColor, rgba(255, 255, 255, 0.15));
+    border-radius: 0.5rem;
+    background: var(--SmartThemeBlurTintColor, var(--SmartThemeBodyColor, #1a1a1a));
+    color: var(--SmartThemeBodyColor, inherit);
+    box-shadow: 0 0.5rem 1.25rem rgba(0, 0, 0, 0.35);
+}
+
+.stfl-menu-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    width: 100%;
+    padding: 0.45rem 0.65rem;
+    border: 0;
+    border-radius: 0.35rem;
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+    text-align: left;
+}
+
+.stfl-menu-item:hover,
+.stfl-menu-item:focus-visible {
+    background: color-mix(in srgb, var(--SmartThemeQuoteColor, #35d06f) 18%, transparent);
+    outline: none;
+}
+
+.stfl-menu-separator {
+    height: 1px;
+    margin: 0.2rem 0.35rem;
+    background: var(--SmartThemeBorderColor, rgba(255, 255, 255, 0.15));
+}
+
+.stfl-page {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    height: 100%;
+    min-height: 0;
+    color: var(--SmartThemeBodyColor, inherit);
+}
+
+.stfl-page-header {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+.stfl-operation {
+    min-height: 0;
+}
+
+.stfl-summary,
+.stfl-flow {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    min-height: 0;
+}
+
+.stfl-summary h3,
+.stfl-flow h3 {
+    margin: 0;
+    font-size: 0.95rem;
+}
+
+.stfl-summary p {
+    margin: 0;
+    white-space: pre-wrap;
+}
+
+.stfl-node-scroll {
+    min-height: 12rem;
+    max-height: min(22rem, 42dvh);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+}
+
+.stfl-node {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 0.65rem;
+    align-items: start;
+    margin: 0.4rem 0;
+    padding: 0.65rem 0.75rem;
+    border: 1px solid var(--SmartThemeBorderColor, rgba(255, 255, 255, 0.15));
+    border-radius: 0.45rem;
+    background: color-mix(in srgb, var(--SmartThemeBlurTintColor, #222) 70%, transparent);
+}
+
+.stfl-node-index {
+    min-width: 1.5rem;
+    font-weight: 600;
+    opacity: 0.8;
+}
+
+.stfl-node-main {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    min-width: 0;
+}
+
+.stfl-node-title {
+    font-weight: 600;
+}
+
+.stfl-node-description {
+    opacity: 0.85;
+    white-space: pre-wrap;
+}
+
+.stfl-node-badge {
+    align-self: start;
+    padding: 0.15rem 0.45rem;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    white-space: nowrap;
+    background: color-mix(in srgb, var(--SmartThemeQuoteColor, #35d06f) 22%, transparent);
+}
+
+.stfl-node[data-status="completed"] {
+    opacity: 0.5;
+}
+
+.stfl-node[data-status="active"] {
+    border-color: #35d06f;
+    box-shadow: inset 0.2rem 0 0 #35d06f;
+}
+
+.stfl-node[data-status="future"] {
+    opacity: 1;
+}
+
+.stfl-operation [data-action="advance"] {
+    flex: 0 0 auto;
+}
+
+.stfl-operation [data-action="advance"]:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+
+.stfl-json-example {
+    flex: 0 0 auto;
+}
+
+.stfl-json-example-title {
+    margin-bottom: 0.35rem;
+    font-weight: 600;
+}
+
+.stfl-json-example pre {
+    margin: 0;
+    padding: 0.55rem 0.7rem;
+    overflow: auto;
+    border: 1px solid var(--SmartThemeBorderColor, rgba(255, 255, 255, 0.15));
+    border-radius: 0.45rem;
+    background: color-mix(in srgb, var(--SmartThemeBlurTintColor, #111) 80%, transparent);
+    font-size: 0.8rem;
+    line-height: 1.35;
+    white-space: pre;
+}
+
+.stfl-settings textarea,
+.stfl-settings [data-role="plot-json"] {
+    flex: 1 1 auto;
+    min-height: 12rem;
+    max-height: min(28rem, 55dvh);
+    overflow: auto;
+    resize: vertical;
+    width: 100%;
+    box-sizing: border-box;
+    padding: 0.65rem 0.75rem;
+    border: 1px solid var(--SmartThemeBorderColor, rgba(255, 255, 255, 0.15));
+    border-radius: 0.45rem;
+    background: color-mix(in srgb, var(--SmartThemeBlurTintColor, #111) 80%, transparent);
+    color: inherit;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 0.85rem;
+    line-height: 1.4;
+}
+
+.stfl-settings-actions {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: flex-end;
+}
+
+.stfl-page button,
+.stfl-menu-item {
+    font: inherit;
+}
+
+.stfl-page button {
+    padding: 0.45rem 0.85rem;
+    border: 1px solid var(--SmartThemeBorderColor, rgba(255, 255, 255, 0.2));
+    border-radius: 0.4rem;
+    background: color-mix(in srgb, var(--SmartThemeQuoteColor, #35d06f) 16%, transparent);
+    color: inherit;
+    cursor: pointer;
+}
+
+.stfl-page button:hover:not(:disabled),
+.stfl-page button:focus-visible {
+    outline: 2px solid color-mix(in srgb, var(--SmartThemeQuoteColor, #35d06f) 70%, white);
+    outline-offset: 1px;
+}
+
+.stfl-page button:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+
+.stfl-settings textarea:focus-visible,
+.stfl-settings [data-role="plot-json"]:focus-visible {
+    outline: 2px solid color-mix(in srgb, var(--SmartThemeQuoteColor, #35d06f) 70%, white);
+    outline-offset: 1px;
+}
+
+@media (max-width: 700px) {
+    dialog.popup.st-fate-ledger-popup {
+        width: min(var(--st-fate-ledger-width), calc(100dvw - 1rem));
+        height: min(var(--st-fate-ledger-height), calc(100dvh - 1rem));
+    }
+
+    .st-fate-ledger {
+        padding: 0.15rem 0.25rem;
+    }
+
+    .stfl-page {
+        gap: 0.5rem;
+    }
+
+    .stfl-node {
+        gap: 0.45rem;
+        padding: 0.5rem 0.55rem;
+    }
+
+    .stfl-node-description {
+        display: block;
+    }
+}

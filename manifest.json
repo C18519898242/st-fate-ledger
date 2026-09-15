@@ -1,0 +1,16 @@
+{
+  "display_name": "命运账本",
+  "loading_order": 50,
+  "requires": [],
+  "optional": [],
+  "js": "index.js",
+  "css": "style.css",
+  "author": "st-fate-ledger contributors",
+  "version": "0.1.0",
+  "minimum_client_version": "1.18.0",
+  "homePage": "https://github.com/C18519898242/st-fate-ledger",
+  "hooks": {
+    "activate": "init"
+  },
+  "generate_interceptor": "stFateLedgerGenerateInterceptor"
+}
