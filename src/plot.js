@@ -57,6 +57,9 @@ export function getCurrentNodeIndex(plot, currentNodeId) {
 }
 
 export function buildPlotRows(plot, currentNodeId) {
+    if (currentNodeId == null) {
+        return plot.nodes.map(node => ({ ...node, status: 'future' }));
+    }
     const activeIndex = getCurrentNodeIndex(plot, currentNodeId);
     return plot.nodes.map((node, index) => ({
         ...node,
@@ -65,11 +68,15 @@ export function buildPlotRows(plot, currentNodeId) {
 }
 
 export function getNextNodeId(plot, currentNodeId) {
+    if (currentNodeId == null) return plot.nodes[0]?.id ?? null;
     const index = getCurrentNodeIndex(plot, currentNodeId);
     return plot.nodes[index + 1]?.id ?? null;
 }
 
 export function buildActorPlotContext(plot, currentNodeId) {
+    if (currentNodeId == null) {
+        return { summary: plot.summary, nodes: [] };
+    }
     const activeIndex = getCurrentNodeIndex(plot, currentNodeId);
     return {
         summary: plot.summary,

@@ -13,6 +13,17 @@ const plot = {
 };
 
 describe('createOperationView', () => {
+    it('presents progress, summary, flow, and actions in distinct operation-console regions', () => {
+        const operation = createOperationView(document, { plot, currentNodeId: '2' }, vi.fn());
+
+        expect(operation.querySelector('.stfl-operation-header .stfl-page-header').textContent).toBe('操作台');
+        expect(operation.querySelector('.stfl-operation-subtitle').textContent).toBe('命运账本 · 当前剧情概览');
+        expect(operation.querySelector('.stfl-operation-header [data-role="plot-progress"]').textContent).toBe('2 / 4');
+        expect(operation.querySelector('.stfl-flow-heading .stfl-flow-hint').textContent).toBe('当前节点自动保持可见');
+        expect(operation.querySelector('[data-node-id="1"] .stfl-node-index').textContent).toBe('01');
+        expect(operation.querySelector('.stfl-operation-footer [data-action="advance"]')).not.toBeNull();
+    });
+
     it('shows progress, node statuses, advance control, and never 编辑剧情', () => {
         const operation = createOperationView(document, { plot, currentNodeId: '2' }, vi.fn());
         expect(operation.querySelector('[data-role="plot-progress"]').textContent).toContain('2 / 4');
@@ -22,6 +33,30 @@ describe('createOperationView', () => {
         expect(operation.querySelector('[data-node-id="3"]').dataset.status).toBe('future');
         expect(operation.textContent).not.toContain('编辑剧情');
         expect(operation.querySelector('[data-action="advance"]')).not.toBeNull();
+    });
+
+    it('shows a start action and zero progress before the plot begins', () => {
+        const operation = createOperationView(
+            document,
+            { plot, phase: 'ready', currentNodeId: null },
+            vi.fn(),
+        );
+
+        expect(operation.querySelector('[data-role="plot-progress"]').textContent).toBe('0 / 4');
+        expect([...operation.querySelectorAll('[data-role="plot-node"]')]
+            .map(node => node.dataset.status)).toEqual(['future', 'future', 'future', 'future']);
+        expect(operation.querySelector('[data-action="advance"]').textContent).toBe('开始剧情');
+    });
+
+    it('shows the next-story action after the summary has been sent', () => {
+        const operation = createOperationView(
+            document,
+            { plot, phase: 'summary', currentNodeId: null },
+            vi.fn(),
+        );
+
+        expect(operation.querySelector('[data-role="plot-progress"]').textContent).toBe('0 / 4');
+        expect(operation.querySelector('[data-action="advance"]').textContent).toBe('进入下一剧情');
     });
 
     it('labels completed and active rows, leaves future unlabeled, and uses textContent for plot text', () => {
@@ -53,6 +88,7 @@ describe('createOperationView', () => {
         const advance = operation.querySelector('[data-action="advance"]');
         expect(advance.disabled).toBe(true);
         expect(advance.textContent).toBe('已到最后节点');
+        expect(operation.querySelector('[data-role="completion-note"]').textContent).toBe('当前已是最终剧情节点');
     });
 
     it('shows 尚未设置剧情 and a disabled advance button with no plot', () => {

@@ -35,11 +35,14 @@ export function readStoredPlot(metadata) {
 export function readPlotState(metadata) {
     const ledger = getLedger(metadata);
     if (ledger == null) {
-        return { plot: null, currentNodeId: null };
+        return { plot: null, phase: 'ready', currentNodeId: null };
     }
     const plot = validatePlot(ledger.plot);
+    if (ledger.phase === 'ready' || ledger.phase === 'summary') {
+        return { plot, phase: ledger.phase, currentNodeId: null };
+    }
     getCurrentNodeIndex(plot, ledger.currentNodeId);
-    return { plot, currentNodeId: ledger.currentNodeId };
+    return { plot, phase: 'node', currentNodeId: ledger.currentNodeId };
 }
 
 async function persist(context, plotFields) {
@@ -66,26 +69,59 @@ export async function savePlotToCurrentChat(getContext, plotInput) {
         ? previous.currentNodeId
         : null;
     const keepPrevious = previousId != null && plot.nodes.some(node => node.id === previousId);
-    const currentNodeId = keepPrevious ? previousId : plot.nodes[0].id;
-    const currentReset = previous != null && !keepPrevious;
-    await persist(context, { version: 1, plot, currentNodeId });
-    return { plot, currentNodeId, currentReset };
+    const previousPhase = previous?.phase ?? (previous == null ? null : 'node');
+    const keepPreNodePhase = previousPhase === 'ready' || previousPhase === 'summary';
+    const phase = keepPreNodePhase ? previousPhase : keepPrevious ? 'node' : 'ready';
+    const currentNodeId = phase === 'node' ? previousId : null;
+    const currentReset = previous != null && !keepPreNodePhase && !keepPrevious;
+    await persist(context, { version: 1, plot, phase, currentNodeId });
+    return { plot, phase, currentNodeId, currentReset };
+}
+
+async function persistAndSendSystemMessage(context, plotFields, text) {
+    const sendSystemMessage = context.SlashCommandParser?.commands?.sys?.callback;
+    if (typeof sendSystemMessage !== 'function') {
+        throw new Error('SillyTavern /sys 命令不可用');
+    }
+    const previous = structuredClone(context.chatMetadata[METADATA_KEY]);
+    await persist(context, plotFields);
+    try {
+        await sendSystemMessage({}, text);
+    } catch (error) {
+        context.chatMetadata[METADATA_KEY] = previous;
+        await context.saveMetadata();
+        throw error;
+    }
 }
 
 export async function advancePlotInCurrentChat(getContext) {
     const context = getContext();
     requireActiveChat(context);
-    const { plot, currentNodeId } = readPlotState(context.chatMetadata);
+    const { plot, phase, currentNodeId } = readPlotState(context.chatMetadata);
     if (plot == null) {
         throw new PlotValidationError('当前聊天尚未保存剧情');
     }
+    if (phase === 'ready') {
+        await persistAndSendSystemMessage(
+            context,
+            { version: 1, plot, phase: 'summary', currentNodeId: null },
+            plot.summary,
+        );
+        return { plot, phase: 'summary', currentNodeId: null, isLast: false };
+    }
     const nextId = getNextNodeId(plot, currentNodeId);
     if (nextId == null) {
-        return { plot, currentNodeId, isLast: true };
+        return { plot, phase, currentNodeId, isLast: true };
     }
-    await persist(context, { version: 1, plot, currentNodeId: nextId });
+    const nextNode = plot.nodes.find(node => node.id === nextId);
+    await persistAndSendSystemMessage(
+        context,
+        { version: 1, plot, phase: 'node', currentNodeId: nextId },
+        nextNode.description,
+    );
     return {
         plot,
+        phase: 'node',
         currentNodeId: nextId,
         isLast: getNextNodeId(plot, nextId) == null,
     };

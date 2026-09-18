@@ -33,6 +33,35 @@ describe('plot prompt interceptor', () => {
         expect(context.setExtensionPrompt).toHaveBeenCalledWith('st-fate-ledger-plot', '', 1, 0, false, 0);
     });
 
+    it('clears the prompt while a saved plot is still ready to start', async () => {
+        const context = {
+            chatMetadata: {
+                st_fate_ledger: { version: 1, plot, phase: 'ready', currentNodeId: null },
+            },
+            setExtensionPrompt: vi.fn(),
+        };
+
+        await createPlotGenerateInterceptor(() => context, vi.fn())([], 8192, vi.fn(), 'normal');
+
+        expect(context.setExtensionPrompt).toHaveBeenCalledWith('st-fate-ledger-plot', '', 1, 0, false, 0);
+    });
+
+    it('injects the summary without node 01 after the plot has started', async () => {
+        const context = {
+            chatMetadata: {
+                st_fate_ledger: { version: 1, plot, phase: 'summary', currentNodeId: null },
+            },
+            setExtensionPrompt: vi.fn(),
+        };
+
+        await createPlotGenerateInterceptor(() => context, vi.fn())([], 8192, vi.fn(), 'normal');
+
+        const prompt = context.setExtensionPrompt.mock.calls[0][1];
+        expect(prompt).toContain(plot.summary);
+        expect(prompt).not.toContain(plot.nodes[0].title);
+        expect(prompt).not.toContain(plot.nodes[0].description);
+    });
+
     it('clears stale content and aborts when currentNodeId is invalid', async () => {
         const context = {
             chatMetadata: { st_fate_ledger: { version: 1, plot, currentNodeId: 'missing' } },

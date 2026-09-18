@@ -159,7 +159,7 @@ export async function mountLedgerUi({ getContext, documentRef, notify }) {
                 async plot => {
                     const saved = await savePlotToCurrentChat(getContext, plot);
                     if (saved.currentReset) {
-                        notify.info('原当前节点已删除，已回到第一个节点');
+                        notify.info('原当前节点已删除，剧情已重置为未开始');
                     }
                     await closeActivePopup();
                 },

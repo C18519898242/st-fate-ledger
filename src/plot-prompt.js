@@ -16,7 +16,7 @@ export function createPlotGenerateInterceptor(getContext, notifyError) {
         const context = getContext();
         try {
             const state = readPlotState(context.chatMetadata);
-            if (state.plot == null) {
+            if (state.plot == null || state.phase === 'ready') {
                 await context.setExtensionPrompt(PLOT_PROMPT_KEY, '', 1, 0, false, 0);
                 return;
             }

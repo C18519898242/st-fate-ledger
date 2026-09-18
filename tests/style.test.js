@@ -6,6 +6,8 @@ describe('plot UI stylesheet', () => {
         const css = await readFile('style.css', 'utf8');
         for (const selector of [
             '.stfl-menu',
+            '.stfl-operation-header',
+            '.stfl-operation-footer',
             '.stfl-node-scroll',
             '[data-status="completed"]',
             '[data-status="active"]',

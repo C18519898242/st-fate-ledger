@@ -35,7 +35,14 @@ describe('plot model', () => {
         ]);
     });
 
+    it('keeps every row in the future before the first node is entered', () => {
+        expect(buildPlotRows(plot, null).map(node => node.status)).toEqual([
+            'future', 'future', 'future', 'future',
+        ]);
+    });
+
     it('returns the next id and stops at the last node', () => {
+        expect(getNextNodeId(plot, null)).toBe('1');
         expect(getNextNodeId(plot, '2')).toBe('3');
         expect(getNextNodeId(plot, '4')).toBeNull();
     });
@@ -48,5 +55,12 @@ describe('plot model', () => {
         ]);
         expect(JSON.stringify(visible)).not.toContain('揭穿冒牌卫队');
         expect(JSON.stringify(visible)).not.toContain('逃离王宫');
+    });
+
+    it('exposes only the summary before the first node is entered', () => {
+        expect(buildActorPlotContext(plot, null)).toEqual({
+            summary: plot.summary,
+            nodes: [],
+        });
     });
 });

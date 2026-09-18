@@ -15,7 +15,22 @@ const plot = {
 };
 
 function makeContext(metadata = {}) {
-    return { chatId: 'chat-1', chatMetadata: metadata, saveMetadata: vi.fn(async () => {}) };
+    const systemMessages = [];
+    return {
+        chatId: 'chat-1',
+        chatMetadata: metadata,
+        saveMetadata: vi.fn(async () => {}),
+        SlashCommandParser: {
+            commands: {
+                sys: {
+                    callback: vi.fn(async (_args, text) => {
+                        systemMessages.push(text);
+                    }),
+                },
+            },
+        },
+        systemMessages,
+    };
 }
 
 describe('plot store', () => {
@@ -28,12 +43,59 @@ describe('plot store', () => {
         expect(context.saveMetadata).not.toHaveBeenCalled();
     });
 
-    it('starts a newly saved plot at its first node', async () => {
+    it('keeps a newly saved plot ready without entering its first node', async () => {
         const context = makeContext();
         const result = await savePlotToCurrentChat(() => context, plot);
-        expect(result).toMatchObject({ plot, currentNodeId: '1', currentReset: false });
-        expect(readPlotState(context.chatMetadata)).toEqual({ plot, currentNodeId: '1' });
+        expect(result).toMatchObject({ plot, phase: 'ready', currentNodeId: null, currentReset: false });
+        expect(readPlotState(context.chatMetadata)).toEqual({ plot, phase: 'ready', currentNodeId: null });
         expect(context.saveMetadata).toHaveBeenCalledOnce();
+    });
+
+    it('starts a ready plot by sending only its summary through /sys', async () => {
+        const context = makeContext({
+            st_fate_ledger: { version: 1, plot, phase: 'ready', currentNodeId: null },
+        });
+
+        const result = await advancePlotInCurrentChat(() => context);
+
+        expect(result).toMatchObject({ phase: 'summary', currentNodeId: null, isLast: false });
+        expect(context.systemMessages).toEqual([plot.summary]);
+        expect(readPlotState(context.chatMetadata)).toEqual({
+            plot,
+            phase: 'summary',
+            currentNodeId: null,
+        });
+    });
+
+    it('enters the first node after the summary and sends its description through /sys', async () => {
+        const context = makeContext({
+            st_fate_ledger: { version: 1, plot, phase: 'summary', currentNodeId: null },
+        });
+
+        const result = await advancePlotInCurrentChat(() => context);
+
+        expect(result).toMatchObject({ phase: 'node', currentNodeId: '1', isLast: false });
+        expect(context.systemMessages).toEqual([plot.nodes[0].description]);
+        expect(readPlotState(context.chatMetadata)).toEqual({
+            plot,
+            phase: 'node',
+            currentNodeId: '1',
+        });
+    });
+
+    it('does not advance when the /sys command fails', async () => {
+        const context = makeContext({
+            st_fate_ledger: { version: 1, plot, phase: 'ready', currentNodeId: null },
+        });
+        context.SlashCommandParser.commands.sys.callback.mockRejectedValue(new Error('chat save failed'));
+
+        await expect(advancePlotInCurrentChat(() => context)).rejects.toThrow('chat save failed');
+
+        expect(readPlotState(context.chatMetadata)).toEqual({
+            plot,
+            phase: 'ready',
+            currentNodeId: null,
+        });
     });
 
     it('keeps an existing current id, but resets a deleted id', async () => {
@@ -43,8 +105,18 @@ describe('plot store', () => {
         expect((await savePlotToCurrentChat(() => context, plot)).currentReset).toBe(false);
         const shorter = { ...plot, nodes: [plot.nodes[0]] };
         expect((await savePlotToCurrentChat(() => context, shorter))).toMatchObject({
-            currentNodeId: '1', currentReset: true,
+            phase: 'ready', currentNodeId: null, currentReset: true,
         });
+    });
+
+    it.each(['ready', 'summary'])('preserves the %s phase when editing the plot', async phase => {
+        const context = makeContext({
+            st_fate_ledger: { version: 1, plot, phase, currentNodeId: null },
+        });
+
+        const result = await savePlotToCurrentChat(() => context, plot);
+
+        expect(result).toMatchObject({ phase, currentNodeId: null, currentReset: false });
     });
 
     it('advances once and does not save at the last node', async () => {
@@ -65,13 +137,13 @@ describe('plot store', () => {
         expect(metadata.st_fate_ledger.currentNodeId).toBe('1');
     });
 
-    it('recovers a missing current id by saving the plot again', async () => {
+    it('resets a missing current id to ready when the plot is saved again', async () => {
         const context = makeContext({
             st_fate_ledger: { version: 1, plot, currentNodeId: 'missing' },
         });
         const result = await savePlotToCurrentChat(() => context, plot);
-        expect(result).toMatchObject({ plot, currentNodeId: '1', currentReset: true });
-        expect(readPlotState(context.chatMetadata)).toEqual({ plot, currentNodeId: '1' });
+        expect(result).toMatchObject({ plot, phase: 'ready', currentNodeId: null, currentReset: true });
+        expect(readPlotState(context.chatMetadata)).toEqual({ plot, phase: 'ready', currentNodeId: null });
     });
 
     it('reads a stored plot without requiring a live current node', () => {

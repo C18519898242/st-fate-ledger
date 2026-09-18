@@ -54,6 +54,7 @@ function installFixture() {
 function makeContext(metadata = {
     [METADATA_KEY]: { version: 1, plot, currentNodeId: '2' },
 }) {
+    const systemMessages = [];
     const handlers = new Map();
     const eventSource = {
         on: vi.fn((event, handler) => {
@@ -73,6 +74,16 @@ function makeContext(metadata = {
         POPUP_TYPE: { DISPLAY: 'DISPLAY' },
         eventSource,
         eventTypes: { CHAT_CHANGED: 'chat_id_changed' },
+        SlashCommandParser: {
+            commands: {
+                sys: {
+                    callback: vi.fn(async (_args, text) => {
+                        systemMessages.push(text);
+                    }),
+                },
+            },
+        },
+        systemMessages,
     };
 }
 
@@ -175,7 +186,40 @@ describe('mountLedgerUi', () => {
         expect(popup.completed).toBe(false);
     });
 
-    it('opens 剧情设置 when currentNodeId is missing and saving recovers to the first node', async () => {
+    it('starts with the summary, then enters node 01 on the next click', async () => {
+        context = makeContext({
+            [METADATA_KEY]: { version: 1, plot, phase: 'ready', currentNodeId: null },
+        });
+        getContext = vi.fn(() => context);
+
+        const { trigger } = await mountLedgerUi({ getContext, documentRef: document, notify });
+        trigger.click();
+        document.querySelector('[data-action="operation"]').click();
+
+        const popup = PopupMock.instances[0];
+        expect(popup.content.querySelector('[data-action="advance"]').textContent).toBe('开始剧情');
+
+        popup.content.querySelector('[data-action="advance"]').click();
+        await vi.waitFor(() => {
+            expect(context.chatMetadata[METADATA_KEY].phase).toBe('summary');
+            expect(popup.content.querySelector('[data-action="advance"]').textContent).toBe('进入下一剧情');
+        });
+        expect(context.systemMessages).toEqual([plot.summary]);
+        expect(popup.content.querySelector('[data-status="active"]')).toBeNull();
+
+        popup.content.querySelector('[data-action="advance"]').click();
+        await vi.waitFor(() => {
+            expect(context.chatMetadata[METADATA_KEY]).toMatchObject({
+                phase: 'node',
+                currentNodeId: '1',
+            });
+            expect(popup.content.querySelector('[data-node-id="1"]').dataset.status).toBe('active');
+        });
+        expect(context.systemMessages).toEqual([plot.summary, plot.nodes[0].description]);
+        expect(notify.error).not.toHaveBeenCalled();
+    });
+
+    it('opens 剧情设置 when currentNodeId is missing and saving resets to ready', async () => {
         context = makeContext({
             [METADATA_KEY]: { version: 1, plot, currentNodeId: 'missing' },
         });
@@ -196,8 +240,11 @@ describe('mountLedgerUi', () => {
 
         await vi.waitFor(() => {
             expect(context.saveMetadata).toHaveBeenCalledOnce();
-            expect(context.chatMetadata[METADATA_KEY].currentNodeId).toBe('1');
-            expect(notify.info).toHaveBeenCalledWith('原当前节点已删除，已回到第一个节点');
+            expect(context.chatMetadata[METADATA_KEY]).toMatchObject({
+                phase: 'ready',
+                currentNodeId: null,
+            });
+            expect(notify.info).toHaveBeenCalledWith('原当前节点已删除，剧情已重置为未开始');
         });
         await vi.waitFor(() => {
             expect(popup.completeCancelled).toHaveBeenCalledOnce();

@@ -43,7 +43,7 @@ function scrollActiveWhenConnected(root, documentRef) {
 
 function createNodeArticle(documentRef, row, index) {
     const children = [
-        el(documentRef, 'div', { className: 'stfl-node-index', textContent: String(index + 1) }),
+        el(documentRef, 'div', { className: 'stfl-node-index', textContent: String(index + 1).padStart(2, '0') }),
         el(documentRef, 'div', { className: 'stfl-node-main' }, [
             el(documentRef, 'div', { className: 'stfl-node-title', textContent: row.title }),
             el(documentRef, 'div', { className: 'stfl-node-description', textContent: row.description }),
@@ -60,16 +60,46 @@ function createNodeArticle(documentRef, row, index) {
     }, children);
 }
 
-export function createOperationView(documentRef, state, onAdvance) {
-    const { plot, currentNodeId } = state ?? {};
-    const root = el(documentRef, 'section', { className: 'stfl-page stfl-operation' });
+function createOperationHeader(documentRef, progressText) {
+    return el(documentRef, 'header', { className: 'stfl-operation-header' }, [
+        el(documentRef, 'div', { className: 'stfl-operation-heading' }, [
+            el(documentRef, 'div', { className: 'stfl-operation-title-row' }, [
+                el(documentRef, 'h2', { className: 'stfl-page-header', textContent: '操作台' }),
+                el(documentRef, 'div', {
+                    className: 'stfl-progress-count',
+                    dataset: { role: 'plot-progress' },
+                    textContent: progressText,
+                }),
+            ]),
+            el(documentRef, 'p', {
+                className: 'stfl-operation-subtitle',
+                textContent: '命运账本 · 当前剧情概览',
+            }),
+        ]),
+    ]);
+}
 
-    root.append(el(documentRef, 'header', { className: 'stfl-page-header', textContent: '操作台' }));
+function createOperationFooter(documentRef, advance, completed) {
+    const children = [];
+    if (completed) {
+        children.push(el(documentRef, 'div', {
+            className: 'stfl-completion-note',
+            dataset: { role: 'completion-note' },
+            textContent: '当前已是最终剧情节点',
+        }));
+    }
+    children.push(advance);
+    return el(documentRef, 'footer', { className: 'stfl-operation-footer' }, children);
+}
+
+export function createOperationView(documentRef, state, onAdvance) {
+    const { plot, currentNodeId, phase = 'node' } = state ?? {};
+    const root = el(documentRef, 'section', { className: 'stfl-page stfl-operation' });
 
     const advance = el(documentRef, 'button', {
         type: 'button',
         dataset: { action: 'advance' },
-        textContent: '进入下一剧情',
+        textContent: phase === 'ready' ? '开始剧情' : '进入下一剧情',
         onClick: async () => {
             if (advance.disabled) return;
             advance.disabled = true;
@@ -82,23 +112,24 @@ export function createOperationView(documentRef, state, onAdvance) {
     });
 
     if (!plot) {
-        root.append(el(documentRef, 'div', {
-            dataset: { role: 'plot-progress' },
+        root.append(createOperationHeader(documentRef, '未设置'));
+        const content = el(documentRef, 'div', { className: 'stfl-operation-content' });
+        content.append(el(documentRef, 'div', {
+            className: 'stfl-operation-empty',
             textContent: '尚未设置剧情',
         }));
         advance.disabled = true;
-        root.append(advance);
+        content.append(createOperationFooter(documentRef, advance, false));
+        root.append(content);
         return root;
     }
 
     const rows = buildPlotRows(plot, currentNodeId);
     const activeIndex = rows.findIndex(row => row.status === 'active');
-    root.append(el(documentRef, 'div', {
-        dataset: { role: 'plot-progress' },
-        textContent: `剧情进度 ${activeIndex + 1} / ${rows.length}`,
-    }));
+    root.append(createOperationHeader(documentRef, `${activeIndex + 1} / ${rows.length}`));
+    const content = el(documentRef, 'div', { className: 'stfl-operation-content' });
 
-    root.append(el(documentRef, 'section', { className: 'stfl-summary' }, [
+    content.append(el(documentRef, 'section', { className: 'stfl-summary' }, [
         el(documentRef, 'h3', { textContent: '剧情简介' }),
         el(documentRef, 'p', { textContent: plot.summary }),
     ]));
@@ -108,17 +139,25 @@ export function createOperationView(documentRef, state, onAdvance) {
         dataset: { role: 'node-scroll' },
     }, rows.map((row, index) => createNodeArticle(documentRef, row, index)));
 
-    root.append(el(documentRef, 'section', { className: 'stfl-flow' }, [
-        el(documentRef, 'h3', { textContent: '剧情流程' }),
+    content.append(el(documentRef, 'section', { className: 'stfl-flow' }, [
+        el(documentRef, 'div', { className: 'stfl-flow-heading' }, [
+            el(documentRef, 'h3', { textContent: '剧情流程' }),
+            el(documentRef, 'span', {
+                className: 'stfl-flow-hint',
+                textContent: '当前节点自动保持可见',
+            }),
+        ]),
         scroll,
     ]));
 
-    if (activeIndex >= rows.length - 1) {
+    const completed = activeIndex >= rows.length - 1;
+    if (completed) {
         advance.disabled = true;
         advance.textContent = '已到最后节点';
     }
 
-    root.append(advance);
+    content.append(createOperationFooter(documentRef, advance, completed));
+    root.append(content);
     scrollActiveWhenConnected(root, documentRef);
     return root;
 }
